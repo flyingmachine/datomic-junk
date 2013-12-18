@@ -39,13 +39,15 @@
             (concat [(flatten [attr-or-condition])]
                     conditions)))
 
+(defn single-eid-query
+  [find eid conditions]
+  (q {:find find
+      :where (single-eid-where eid conditions)}))
+
 (defn eid
   "Return eid of first entity matching conditions"
   [& conditions]
-  (-> {:find ['?c]
-       :where (single-eid-where '?c conditions)}
-      q
-      ffirst))
+  (ffirst (single-eid-query ['?x] '?x conditions)))
 
 (defn one
   "Return first entity matching conditions"
@@ -56,13 +58,11 @@
 (defn all
   "All entities matching condititions"
   [& conditions]
-  (ents (q {:find ['?c]
-            :where (single-eid-where '?c conditions)})))
+  (ents (single-eid-query ['?x] '?x conditions)))
 
 (defn ent-count
   [& conditions]
-  (or (ffirst (q {:find '[(count ?c)]
-                  :where (single-eid-where '?c conditions)}))
+  (or (ffirst (single-eid-query '[(count ?x)] '?x conditions))
       0))
 
 (def t #(d/transact (conn) %))
