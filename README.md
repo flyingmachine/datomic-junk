@@ -6,7 +6,7 @@ This library does a few things:
   much
 * Makes it easier to run simple queries where only one kind of entity
   is involved.
-
+* Provides a couple utility functions like `ent-count` `tempids`
 
 ## Installation
 
@@ -22,6 +22,8 @@ You'll want something like this for a leiningen profile:
 ```clojure
 {:dev {:env {:datomic {:db-uri "datomic-uri"}}}}
 ```
+
+This is assigned to `com.flyingmachine.datomic-junk/*db-uri*`.
 
 ## Side-by-side examples
 
