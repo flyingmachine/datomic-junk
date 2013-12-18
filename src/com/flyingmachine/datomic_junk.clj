@@ -31,13 +31,18 @@
   [head seqs]
   (map #(concat [head] %) seqs))
 
+(defn single-eid-where
+  [eid-name [attr-or-condition & conditions]]
+  (add-head eid-name
+            (concat [(flatten [attr-or-condition])]
+                    conditions)))
+
 (defn eid
   [& conditions]
-  (let [conditions (add-head '?c conditions)]
-    (-> {:find ['?c]
-         :where conditions}
-        q
-        ffirst)))
+  (-> {:find ['?c]
+       :where (single-eid-where '?c conditions)}
+      q
+      ffirst))
 
 (defn one
   [& conditions]
@@ -45,16 +50,14 @@
     (ent id)))
 
 (defn all
-  [common-attribute & conditions]
-  (let [common (flatten ['?c common-attribute])
-        conditions (concat [common]
-                           (add-head '?c conditions))]
-    (ents (q {:find ['?c] :where conditions}))))
+  [& conditions]
+  (ents (q {:find ['?c]
+            :where (single-eid-where '?c conditions)})))
 
 (defn ent-count
   [& conditions]
   (or (ffirst (q {:find '[(count ?c)]
-                  :where (add-head '?c conditions)}))
+                  :where (single-eid-where '?c conditions)}))
       0))
 
 (def t #(d/transact (conn) %))

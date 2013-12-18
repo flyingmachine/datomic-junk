@@ -63,6 +63,9 @@
   (fact "returns an entity given an id if it matches"
     (one [:test/name "Bartleby"])
     => (ent 65))
+  (fact "works with just an attriube"
+    (one :test/name)
+    => (ent 65))
   (fact "returns nil if nothing matches"
     (one [:test/name "blarb"])
     => nil))
@@ -71,14 +74,21 @@
   (fact "returns ents"
     (map :db/id (all [:test/name]))
     => [65 66])
-  (fact "returns empty seq if no resutls"
+  (fact "works with just an attribute"
+    (map :db/id (all :test/name))
+    => [65 66])
+  (fact "and you can provide an attribute value of course"
+    (map :db/id (all [:test/name "Bartleby"]))
+    => [65])
+  (fact "returns empty seq if no results"
     (all [:test/name "blarb"])
     => empty?))
 
 (facts "ent-count returns a count"
   (ent-count [:test/name])
   => 2
-
+  (ent-count :test/name)
+  => 2
   (ent-count [:test/name "blarb"])
   => 0)
 
