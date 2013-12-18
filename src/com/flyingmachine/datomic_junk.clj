@@ -13,7 +13,6 @@
   []
   (d/db (conn)))
 
-;; '[:find ?c :where [?c :topic/title]]
 (def q #(d/q % (db)))
 
 (defn ent
@@ -28,9 +27,13 @@
 
 (defn ent? [x] (instance? datomic.query.EntityMap x))
 
+(defn add-head
+  [head seqs]
+  (map #(concat [head] %) seqs))
+
 (defn eid
   [& conditions]
-  (let [conditions (map #(concat ['?c] %) conditions)]
+  (let [conditions (add-head '?c conditions)]
     (-> {:find ['?c]
          :where conditions}
         q
@@ -45,17 +48,14 @@
   [common-attribute & conditions]
   (let [common (flatten ['?c common-attribute])
         conditions (concat [common]
-                           (map #(concat ['?c] %) conditions))]
+                           (add-head '?c conditions))]
     (ents (q {:find ['?c] :where conditions}))))
 
 (defn ent-count
-  [attr]
-  (ffirst
-   (d/q '[:find (count ?e)
-          :in $ ?attr
-          :where [?e ?attr]]
-        (db)
-        attr)))
+  [& conditions]
+  (or (ffirst (q {:find '[(count ?c)]
+                  :where (add-head '?c conditions)}))
+      0))
 
 (def t #(d/transact (conn) %))
 
@@ -67,6 +67,10 @@
   [& keys]
   (into {} (map #(vector %1 (d/tempid :db.part/user %2)) keys (iterate dec -1))))
 
-(defn retract-entity
-  [eid]
-  (t [[:db.fn/retractEntity eid]]))
+(defn retractions
+  [eids]
+  (map #(vector :db.fn/retractEntity %) eids))
+
+(defn retract
+  [& eids]
+  (t (retractions eids)))
