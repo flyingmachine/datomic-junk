@@ -34,7 +34,7 @@
   (instance? datomic.db.Db (db))
   => true)
 
-(fact "q works"
+(fact "q is datomic.api/q without having to pass db"
   (count (q '[:find ?t :where [?t :test/name]]))
   => 2)
 
@@ -46,10 +46,9 @@
     (ent? (ent (ffirst (q '[:find ?t :where [?t :test/name]]))))
     => true))
 
-(facts "about ents"
-  (fact "returns ents given query results"
-    (map :db/id (ents [[65] [66]]))
-    => [65 66]))
+(fact "ents returns datomic entities given query results"
+  (map :db/id (ents [[65] [66]]))
+  => [65 66])
 
 (facts "about eid"
   (fact "eid returns an entity id"

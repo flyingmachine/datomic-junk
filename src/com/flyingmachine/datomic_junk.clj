@@ -16,6 +16,7 @@
 (def q #(d/q % (db)))
 
 (defn ent
+  "Datomic entity from id, or nil if none exists"
   [id]
   (if-let [exists (ffirst (d/q '[:find ?eid :in $ ?eid :where [?eid]] (db) id))]
     (d/entity (db) exists)
@@ -32,12 +33,14 @@
   (map #(concat [head] %) seqs))
 
 (defn single-eid-where
+  "Used to build where clauses for functions below"
   [eid-name [attr-or-condition & conditions]]
   (add-head eid-name
             (concat [(flatten [attr-or-condition])]
                     conditions)))
 
 (defn eid
+  "Return eid of first entity matching conditions"
   [& conditions]
   (-> {:find ['?c]
        :where (single-eid-where '?c conditions)}
@@ -45,11 +48,13 @@
       ffirst))
 
 (defn one
+  "Return first entity matching conditions"
   [& conditions]
   (if-let [id (apply eid conditions)]
     (ent id)))
 
 (defn all
+  "All entities matching condititions"
   [& conditions]
   (ents (q {:find ['?c]
             :where (single-eid-where '?c conditions)})))
