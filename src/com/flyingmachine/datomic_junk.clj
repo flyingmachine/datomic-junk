@@ -4,6 +4,17 @@
             [environ.core :refer [env]]))
 (defconfig config env :datomic)
 (def ^:dynamic *db-uri* (config :db-uri))
+(def ^:dynamic *db* nil)
+
+(defmacro with-db-uri
+  [db-uri & body]
+  `(binding [*db-uri* ~db-uri]
+     ~@body))
+
+(defmacro with-db
+  [db & body]
+  `(binding [*db* ~db]
+     ~@body))
 
 (defn conn
   []
@@ -14,7 +25,7 @@
   (d/db (conn)))
 
 (defn q
-  ([query] (d/q query (db)))
+  ([query] (d/q query (or *db* (db))))
   ([query & inputs] (apply d/q query inputs)))
 
 (defn ent
