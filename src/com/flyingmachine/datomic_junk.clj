@@ -13,14 +13,17 @@
   []
   (d/db (conn)))
 
-(def q #(d/q % (db)))
+(defn q
+  ([query] (d/q query (db)))
+  ([query & inputs] (apply d/q query inputs)))
 
 (defn ent
   "Datomic entity from id, or nil if none exists"
   [id]
-  (if-let [exists (ffirst (d/q '[:find ?eid :in $ ?eid :where [?eid]] (db) id))]
-    (d/entity (db) exists)
-    nil))
+  (let [db (db)]
+    (if-let [exists (ffirst (d/q '[:find ?eid :in $ ?eid :where [?eid]] db id))]
+      (d/entity db exists)
+      nil)))
 
 (defn ents
   [results]
