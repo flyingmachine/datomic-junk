@@ -150,4 +150,16 @@ This is assigned to `com.flyingmachine.datomic-junk/*db-uri*`.
   (apply retract (map :db/id (all [:test/name "Henry"])))
   (one [:test/name "Henry"])
   => nil)
+
+(fact "you can specify the db with with-db-uri"
+  (let [db (db)]
+    (with-db-uri "datomic:mem://datomic-junk-uncreated-db"
+      (d/delete-database *db-uri*)
+      (d/create-database *db-uri*)
+      (t schema)
+      (ent-count [:test/name])
+      => 0
+      (with-db db
+        (ent-count [:test/name])
+        => 2))))
 ```
