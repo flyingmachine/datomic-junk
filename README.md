@@ -151,14 +151,22 @@ This is assigned to `com.flyingmachine.datomic-junk/*db-uri*`.
   (one [:test/name "Henry"])
   => nil)
 
-(fact "you can specify the db with with-db-uri"
+(fact "you can specify the db with with-db-uri or :inputs"
   (let [db (db)]
     (with-db-uri "datomic:mem://datomic-junk-uncreated-db"
       (d/delete-database *db-uri*)
       (d/create-database *db-uri*)
       (t schema)
+
       (ent-count [:test/name])
       => 0
+
+      (ent-count :test/name :inputs db)
+      => 2
+
+      (map :db/id (ents [[65] [66]] db))
+      => [65 66]
+
       (with-db db
         (ent-count [:test/name])
         => 2))))
