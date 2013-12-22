@@ -65,12 +65,16 @@
   (let [[where & opts] (partition-by #(or (= :in %) (= :inputs %)) conditions)]
     (merge {:where (single-eid-where eid where)
             :in ['$]}
-           (reduce merge {} (map #(hash-map (ffirst %) (second %)) (partition 2 opts))))))
+           (reduce merge {}
+                   (map #(hash-map (ffirst %) (second %))
+                        (partition 2 opts))))))
 
 (defn single-eid-query
   [find eid conditions]
   (let [parsed-conditions (parse-conditions eid conditions)]
-    (apply q (merge {:find find} (dissoc parsed-conditions :inputs)) (:inputs parsed-conditions))))
+    (apply q (merge {:find find}
+                    (dissoc parsed-conditions :inputs))
+           (:inputs parsed-conditions))))
 
 (defn eid
   "Return eid of first entity matching conditions"
