@@ -30,15 +30,22 @@
 
 (defn ent
   "Datomic entity from id, or nil if none exists"
-  [id]
-  (let [db (db)]
-    (if-let [exists (ffirst (d/q '[:find ?eid :in $ ?eid :where [?eid]] db id))]
-      (d/entity db exists)
-      nil)))
+  ([id]
+     (ent id (db)))
+  ([id db]
+     (if-let [exists (ffirst (d/q '[:find ?eid :in $ ?eid :where [?eid]] db id))]
+       (d/entity db exists)
+       nil)))
 
 (defn ents
-  [results]
-  (map (comp ent first) results))
+  ([results]
+     (ents results (db)))
+  ([results db]
+     (map (fn [result]
+            (-> result
+                first
+                (ent db)))
+          results)))
 
 (defn ent? [x] (instance? datomic.query.EntityMap x))
 
@@ -48,15 +55,22 @@
 
 (defn single-eid-where
   "Used to build where clauses for functions below"
-  [eid-name [attr-or-condition & conditions]]
-  (add-head eid-name
+  [eid [attr-or-condition & conditions]]
+  (add-head eid
             (concat [(flatten [attr-or-condition])]
                     conditions)))
 
+(defn parse-conditions
+  [eid conditions]
+  (let [[where & opts] (partition-by #(or (= :in %) (= :inputs %)) conditions)]
+    (merge {:where (single-eid-where eid where)
+            :in ['$]}
+           (reduce merge {} (map #(hash-map (ffirst %) (second %)) (partition 2 opts))))))
+
 (defn single-eid-query
   [find eid conditions]
-  (q {:find find
-      :where (single-eid-where eid conditions)}))
+  (let [parsed-conditions (parse-conditions eid conditions)]
+    (apply q (merge {:find find} (dissoc parsed-conditions :inputs)) (:inputs parsed-conditions))))
 
 (defn eid
   "Return eid of first entity matching conditions"
@@ -79,6 +93,8 @@
   (or (ffirst (single-eid-query '[(count ?x)] '?x conditions))
       0))
 
+
+;; Transaction helpers
 (def t #(d/transact (conn) %))
 
 (defn resolve-tempid
