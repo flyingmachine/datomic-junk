@@ -8,4 +8,5 @@
                  [environ "0.4.0"]]
   :profiles {:dev {:dependencies [[com.datomic/datomic-free "0.9.4360"]
                                   [midje "1.5.0"]]
-                   :env {:datomic {:db-uri "datomic:mem://datomic-junk-test"}}}})
+                   :env {:datomic {:db-uri "datomic:mem://datomic-junk-test"
+                                   :schema-attr :datomic-junk/schema}}}})
