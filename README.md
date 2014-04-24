@@ -13,7 +13,7 @@ This library does a few things:
 In your `project.clj`, use
 
 ```clojure
-[com.flyingmachine/datomic-junk "0.1.0"]
+[com.flyingmachine/datomic-junk "0.1.4"]
 ```
 
 datomic-junk uses [environ](https://github.com/weavejester/environ).
