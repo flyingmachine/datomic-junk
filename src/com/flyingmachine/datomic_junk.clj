@@ -1,9 +1,7 @@
-; Eid and only are taken from https://github.com/Datomic/day-of-datomic/blob/master/src/datomic/samples/query.clj
-; and are covered by the EPL
+; "Eid" and "only" are taken from https://github.com/Datomic/day-of-datomic/blob/master/src/datomic/samples/query.clj
 
 (ns com.flyingmachine.datomic-junk
   (:require [datomic.api :as d]))
-
 
 (defn only
   "Return the only item from a query result"
@@ -26,11 +24,11 @@
 
 (defn ent
   "Datomic entity from id, or nil if none exists"
-  [db id]
-  (if-let [exists (ffirst (d/q '[:find ?eid
-                                 :in $ ?eid
-                                 :where [?eid]]
-                               db (e id)))]
+  [id db]
+  (if-let [exists (only (d/q '[:find ?eid
+                               :in $ ?eid
+                               :where [?eid]]
+                             db (e id)))]
     (d/entity db exists)
     nil))
 
@@ -44,6 +42,8 @@
 
 (defn ent? [x] (instance? datomic.query.EntityMap x))
 
+;; The following functions help when retrieving entities when you
+;; don't need to specify their relationships to other entities
 (defn add-head
   [head seqs]
   (map #(into [head] %) seqs))
@@ -74,12 +74,12 @@
 (defn eid-by
   "Return eid of first entity matching conditions"
   [& conditions]
-  (ffirst (single-eid-query ['?x] '?x conditions)))
+  (only (single-eid-query ['?x] '?x conditions)))
 
 (defn one
   "Return first entity matching conditions"
   [& conditions]
-  (if-let [id (apply eid conditions)]
+  (if-let [id (apply eid-by conditions)]
     (ent id)))
 
 (defn all
@@ -104,3 +104,5 @@
 (defn retract
   [conn & eids]
   (d/transact conn (retractions eids)))
+
+(def t d/transact)

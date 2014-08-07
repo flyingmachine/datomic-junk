@@ -3,18 +3,21 @@
             [datomic.api :as d])
   (:use midje.sweet))
 
-(d/delete-database *db-uri*)
-(d/create-database *db-uri*)
+(def db-uri "datomic:mem://datomic-junk")
+
+(d/create-database db-uri)
+
 
 (def schema
-  (into [] (map #(merge {:db/id (d/tempid :db.part/db)
-                         :db.install/_attribute :db.part/db
-                         :db/cardinality :db.cardinality/one}
-                        %)
-                [{:db/ident :test/name
-                  :db/valueType :db.type/string}
-                 {:db/ident :test/number
-                  :db/valueType :db.type/long}])))
+  (into []
+        (map #(merge {:db/id (d/tempid :db.part/db)
+                      :db.install/_attribute :db.part/db
+                      :db/cardinality :db.cardinality/one}
+                     %)
+             [{:db/ident :test/name
+               :db/valueType :db.type/string}
+              {:db/ident :test/number
+               :db/valueType :db.type/long}])))
 
 (def data [{:db/id #db/id[:db.part/db]
             :test/name "Bartleby"
