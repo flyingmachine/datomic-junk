@@ -1,57 +1,52 @@
+; Eid and only are taken from https://github.com/Datomic/day-of-datomic/blob/master/src/datomic/samples/query.clj
+; and are covered by the EPL
+
 (ns com.flyingmachine.datomic-junk
-  (:require [datomic.api :as d]
-            [com.flyingmachine.config :refer :all]
-            [environ.core :refer [env]]))
-(defconfig config env :datomic)
-(def ^:dynamic *db-uri* (config :db-uri))
-(def ^:dynamic *db* nil)
+  (:require [datomic.api :as d]))
 
-(defmacro with-db-uri
-  [db-uri & body]
-  `(binding [*db-uri* ~db-uri]
-     ~@body))
 
-(defmacro with-db
-  [db & body]
-  `(binding [*db* ~db]
-     ~@body))
+(defn only
+  "Return the only item from a query result"
+  [query-result]
+  (assert (= 1 (count query-result)))
+  (assert (= 1 (count (first query-result))))
+  (ffirst query-result))
 
-(defn conn
-  []
-  (d/connect *db-uri*))
 
-(defn db
-  []
-  (d/db (conn)))
+;; Get id whether from number or datomic ent
+(defprotocol Eid
+  (e [_]))
 
-(defn q
-  ([query] (d/q query (or *db* (db))))
-  ([query & inputs] (apply d/q query inputs)))
+(extend-protocol Eid
+  java.lang.Long
+  (e [n] n)
+
+  datomic.Entity
+  (e [ent] (:db/id ent)))
 
 (defn ent
   "Datomic entity from id, or nil if none exists"
-  ([id]
-     (ent id (db)))
-  ([id db]
-     (if-let [exists (ffirst (d/q '[:find ?eid :in $ ?eid :where [?eid]] db id))]
-       (d/entity db exists)
-       nil)))
+  [db id]
+  (if-let [exists (ffirst (d/q '[:find ?eid
+                                 :in $ ?eid
+                                 :where [?eid]]
+                               db (e id)))]
+    (d/entity db exists)
+    nil))
 
 (defn ents
-  ([results]
-     (ents results (db)))
-  ([results db]
-     (map (fn [result]
-            (-> result
-                first
-                (ent db)))
-          results)))
+  [db results]
+  (map (fn [result]
+         (->> result
+              first
+              (ent db)))
+       results))
 
 (defn ent? [x] (instance? datomic.query.EntityMap x))
 
 (defn add-head
   [head seqs]
-  (map #(concat [head] %) seqs))
+  (map #(into [head] %) seqs))
 
 (defn single-eid-where
   "Used to build where clauses for functions below"
@@ -72,11 +67,11 @@
 (defn single-eid-query
   [find eid conditions]
   (let [parsed-conditions (parse-conditions eid conditions)]
-    (apply q (merge {:find find}
-                    (dissoc parsed-conditions :inputs))
+    (apply d/q (merge {:find find}
+                      (dissoc parsed-conditions :inputs))
            (:inputs parsed-conditions))))
 
-(defn eid
+(defn eid-by
   "Return eid of first entity matching conditions"
   [& conditions]
   (ffirst (single-eid-query ['?x] '?x conditions)))
@@ -97,14 +92,7 @@
   (or (ffirst (single-eid-query '[(count ?x)] '?x conditions))
       0))
 
-
 ;; Transaction helpers
-(def t #(d/transact (conn) %))
-
-(defn resolve-tempid
-  [tempids tempid]
-  (d/resolve-tempid (db) tempids tempid))
-
 (defn tempids
   [& keys]
   (into {} (map #(vector %1 (d/tempid :db.part/user %2)) keys (iterate dec -1))))
@@ -114,5 +102,5 @@
   (map #(vector :db.fn/retractEntity %) eids))
 
 (defn retract
-  [& eids]
-  (t (retractions eids)))
+  [conn & eids]
+  (d/transact conn (retractions eids)))
