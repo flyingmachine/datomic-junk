@@ -57,8 +57,8 @@
         (if txes
           (doseq [tx txes]
             ;; hrm, could mark the last tx specially
-            (d/transact conn (cons {:db/id #db/id [:db.part/tx]
-                                    schema-attr schema-name}
-                                   tx)))
+            @(d/transact conn (cons {:db/id #db/id [:db.part/tx]
+                                     schema-attr schema-name}
+                                    tx)))
           (throw (ex-info (str "No data provided for schema" schema-name)
                           {:schema/missing schema-name})))))))

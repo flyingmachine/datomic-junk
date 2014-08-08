@@ -1,4 +1,6 @@
 (ns com.flyingmachine.datomic-junk.tasks
+  "Helpers for creating and migration databases. Assumes schemas are
+  in resources/schemas"
   (:gen-class)
   (:require [datomic.api :as d]
             [clojure.java.io :as io]
@@ -17,20 +19,11 @@
       slurp-resource
       read-string))
 
-(defn create
-  []
-  (d/create-database dj/*db-uri*))
-
-(defn delete
-  []
-  (d/delete-database dj/*db-uri*))
-
 (defn recreate
-  []
-  (delete)
-  (create))
+  [uri]
+  (d/delete-database uri)
+  (d/create-database uri))
 
-(def schema-attr (dj/config :schema-attr))
 (defn schema-path
   [schema-name]
   (str "schemas/" (name schema-name) ".edn"))
@@ -43,25 +36,33 @@
 
 (defn schema-map
   [schema-names]
-  (reduce (fn [m name]
-            (assoc m name (schema-data name)))
-          {}
-          schema-names))
+  (->> schema-names
+       (map #(vector % (schema-data %)))
+       (into {})))
 
 (defn install-schemas
-  [schemas]
+  [conn schema-attr schema-names]
   (apply schema/ensure-schemas
-         (into [(dj/conn) schema-attr (schema-map schemas)] schemas)))
+         conn
+         schema-attr
+         (schema-map schema-names)
+         schema-names))
 
 (defn rename-schemas
-  [name-map]
-  (let [schemas (dj/all schema-attr)]
-    (filter identity (map (fn [schema]
-                            (if-let [new-name (get name-map (get schema schema-attr))]
-                              [:db/add (:db/id schema) schema-attr new-name]))
-                          schemas))))
+  [db schema-attr name-map]
+  (let [schemas (dj/all db schema-attr)]
+    (println schemas)
+    (filter identity
+            (map (fn [schema]
+                   (if-let [new-name (get name-map (get schema schema-attr))]
+                     [:db/add (:db/id schema) schema-attr new-name]))
+                 schemas))))
 
 (defn reload
-  [schemas]
-  (recreate)
-  (install-schemas schemas))
+  [uri schema-attr schema-names]
+  (recreate uri)
+  (install-schemas (d/connect uri) schema-attr schema-names))
+
+(defn seed
+  [conn]
+  (dj/t conn (read-resource "fixtures/seeds.edn")))

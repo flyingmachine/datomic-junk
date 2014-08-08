@@ -1,0 +1,13 @@
+[{:db/ident :test/name
+  :db/id #db/id[:db.part/db]
+  :db/valueType :db.type/string
+  :db/cardinality :db.cardinality/one
+  :db/doc "A name for a test person"
+  :db.install/_attribute :db.part/db}
+ 
+ {:db/ident :test/number
+  :db/id #db/id[:db.part/db]
+  :db/valueType :db.type/long
+  :db/cardinality :db.cardinality/one
+  :db/doc "A number for a test person"
+  :db.install/_attribute :db.part/db}]
