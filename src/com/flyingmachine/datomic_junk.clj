@@ -10,6 +10,11 @@
   (assert (= 1 (count (first query-result))))
   (ffirst query-result))
 
+(defn max1
+  [query-result]
+  (assert (< (count query-result) 2))
+  (assert (< (count (first query-result)) 2))
+  (ffirst query-result))
 
 ;; Get id whether from number or datomic ent
 (defprotocol Eid
@@ -25,7 +30,7 @@
 (defn ent
   "Datomic entity from id, or nil if none exists"
   [id db]
-  (if-let [exists (only (d/q '[:find ?eid
+  (if-let [exists (max1 (d/q '[:find ?eid
                                :in $ ?eid
                                :where [?eid]]
                              db (e id)))]
@@ -35,15 +40,16 @@
 (defn ents
   [db results]
   (map (fn [result]
-         (->> result
-              first
-              (ent db)))
+         (-> result
+             first
+             (ent db)))
        results))
 
 (defn ent? [x] (instance? datomic.query.EntityMap x))
 
 ;; The following functions help when retrieving entities when you
 ;; don't need to specify their relationships to other entities
+;; and you only have one input, the db
 (defn add-head
   [head seqs]
   (map #(into [head] %) seqs))
@@ -71,25 +77,42 @@
                       (dissoc parsed-conditions :inputs))
            (:inputs parsed-conditions))))
 
+(defn no-relation-where
+  "Used to build where clauses for functions below"
+  [eid [attr-or-condition & conditions]]
+  (add-head eid
+            (concat [(flatten [attr-or-condition])]
+                    conditions)))
+
+(defn no-relation-query-map
+  [find variable conditions]
+  {:find find
+   :where (no-relation-where variable conditions)
+   :in ['$]})
+
+(defn no-relation-query
+  [db find variable conditions]
+  (d/q (no-relation-query-map find variable conditions) db))
+
 (defn eid-by
   "Return eid of first entity matching conditions"
-  [& conditions]
-  (only (single-eid-query ['?x] '?x conditions)))
+  [db & conditions]
+  (ffirst (no-relation-query db ['?x] '?x conditions)))
 
 (defn one
   "Return first entity matching conditions"
-  [& conditions]
-  (if-let [id (apply eid-by conditions)]
-    (ent id)))
+  [db & conditions]
+  (if-let [id (apply eid-by db conditions)]
+    (d/entity db id)))
 
 (defn all
   "All entities matching condititions"
-  [& conditions]
-  (ents (single-eid-query ['?x] '?x conditions)))
+  [db & conditions]
+  (ents db (no-relation-query db ['?x] '?x conditions)))
 
 (defn ent-count
-  [& conditions]
-  (or (ffirst (single-eid-query '[(count ?x)] '?x conditions))
+  [db & conditions]
+  (or (ffirst (no-relation-query db '[(count ?x)] '?x conditions))
       0))
 
 ;; Transaction helpers
