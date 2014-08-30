@@ -1,14 +1,8 @@
-; "Eid" and "only" are taken from https://github.com/Datomic/day-of-datomic/blob/master/src/datomic/samples/query.clj
+; "Eid" is taken from
+; https://github.com/Datomic/day-of-datomic/blob/master/src/datomic/samples/query.clj
 
 (ns com.flyingmachine.datomic-junk
   (:require [datomic.api :as d]))
-
-(defn only
-  "Return the only item from a query result"
-  [query-result]
-  (assert (= 1 (count query-result)))
-  (assert (= 1 (count (first query-result))))
-  (ffirst query-result))
 
 (defn max1
   [query-result]

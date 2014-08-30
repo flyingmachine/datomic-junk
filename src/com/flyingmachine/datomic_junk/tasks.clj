@@ -1,5 +1,5 @@
 (ns com.flyingmachine.datomic-junk.tasks
-  "Helpers for creating and migration databases. Assumes schemas are
+  "Helpers for creating and migrating databases. Assumes schemas are
   in resources/schemas"
   (:gen-class)
   (:require [datomic.api :as d]
@@ -7,6 +7,7 @@
             [com.flyingmachine.datomic-junk :as dj]
             [com.flyingmachine.datomic-junk.schema :as schema]))
 
+;; Helper functions
 (defn slurp-resource
   [path]
   (-> path
@@ -20,6 +21,7 @@
       read-string))
 
 (defn recreate
+  "Delete and create a database"
   [uri]
   (d/delete-database uri)
   (d/create-database uri))

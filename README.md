@@ -1,173 +1,130 @@
 # datomic-junk
 
-This library does a few things:
+This library helps with a few things:
 
-* Allows you to not have to pass in the database as an argument as
-  much
-* Makes it easier to run simple queries where only one kind of entity
-  is involved.
-* Provides a couple utility functions like `ent-count` `tempids`
+* [**Querying**](#querying)
+    * Provides helpers functions for retrieving entities when you
+      don't need to specify their relationships to other entities and
+      you only have one input, the db.
+    * Includes a couple utility functions like `ent-count` and `tempids`
+* [**Tasks**](#tasks) Makes it easier to create a database and add
+  schema attributes. Assumes schemas are in `resources/schemas`
+* [**Data Loading**](#data-loading) Allows you to more succinctly
+  express entities and relationships for loading into datomic. This is
+  good for loading seed data, for example
 
 ## Installation
 
 In your `project.clj`, use
 
 ```clojure
-[com.flyingmachine/datomic-junk "0.1.4"]
+[com.flyingmachine/datomic-junk "0.2.1"]
 ```
 
-datomic-junk uses [environ](https://github.com/weavejester/environ).
-You'll want something like this for a leiningen profile:
+## Querying
 
-```clojure
-{:dev {:env {:datomic {:db-uri "datomic-uri"}}}}
-```
-
-This is assigned to `com.flyingmachine.datomic-junk/*db-uri*`.
-
-## Side-by-side examples
+Functions from the `com.flyingmachine.datomic-junk` namespace allow
+you to more succinctly express simple queries. Examples:
 
 ```clojure
 ;; datomic - find the biebs
 (q '[:find '?c :where [['?c :person/name "Justin Biebs"]]] db)
 
 ;; datomic-junk
-(one [:person/name "Justin Biebs"])
+(one db [:person/name "Justin Biebs"])
 
 
 ;; datomic - find all people
 (q '[:find '?c :where [['?c :person/name]]] db)
 ;; datomic-junk
-(all :person/name)
+(all db :person/name)
+
+;; datomic - find people with name X
+(q '[:find '?c :where [['?c :person/name "X"]]] db)
+;; datomic-junk
+(all db [:person/name "X"])
 
 ;; Each datomic-junk function can take multiple conditions
-(all [:person/birth-year 1955] [:favorite/color "burgundy"])
+(all db [:person/birth-year 1955] [:favorite/color "burgundy"])
 ```
 
-## Test Examples
+Also [check out the tests](https://github.com/flyingmachine/datomic-junk/blob/master/test/com/flyingmachine/datomic_junk_test.clj) for more examples.
+
+## Tasks
+
+In the `com.flyingmachine.datomic-junk.tasks` namespace:
+
+`install-schemas` takes a seq of schema names like
 
 ```clojure
-(ns com.flyingmachine.datomic-junk-test
-  (:require [com.flyingmachine.datomic-junk :refer :all]
-            [datomic.api :as d])
-  (:use midje.sweet))
-
-(d/delete-database *db-uri*)
-(d/create-database *db-uri*)
-
-(def schema
-  (into [] (map #(merge {:db/id (d/tempid :db.part/db)
-                         :db.install/_attribute :db.part/db
-                         :db/cardinality :db.cardinality/one}
-                        %)
-                [{:db/ident :test/name
-                  :db/valueType :db.type/string}
-                 {:db/ident :test/number
-                  :db/valueType :db.type/long}])))
-
-(def data [{:db/id #db/id[:db.part/db]
-            :test/name "Bartleby"
-            :test/number 3}
-           {:db/id #db/id[:db.part/db]
-            :test/name "Jean Valjean"
-            :test/number 24601}])
-
-(t schema)
-(t data)
-
-(fact "conn works"
-  (instance? datomic.peer.LocalConnection (conn))
-  => true)
-
-(fact "returns db from conn"
-  (instance? datomic.db.Db (db))
-  => true)
-
-(fact "q is datomic.api/q without having to pass db"
-  (count (q '[:find ?t :where [?t :test/name]]))
-  => 2)
-
-(facts "about ent"
-  (fact "ent returns nil if given a bogus id"
-    (ent 12345)
-    => nil)
-  (fact "ent returns a datomic entity if given a good id"
-    (ent? (ent (ffirst (q '[:find ?t :where [?t :test/name]]))))
-    => true))
-
-(fact "ents returns datomic entities given query results"
-  (map :db/id (ents [[65] [66]]))
-  => [65 66])
-
-(facts "about eid"
-  (fact "eid returns an entity id"
-    (eid [:test/name])
-    => 65)
-  (fact "eid returns nil when nothing found"
-    (eid [:test/name "blarb"])
-    => nil))
-
-(facts "about one"
-  (fact "returns an entity given an id if it matches"
-    (one [:test/name "Bartleby"])
-    => (ent 65))
-  (fact "works with just an attriube"
-    (one :test/name)
-    => (ent 65))
-  (fact "returns nil if nothing matches"
-    (one [:test/name "blarb"])
-    => nil))
-
-(facts "about all"
-  (fact "returns ents"
-    (map :db/id (all [:test/name]))
-    => [65 66])
-  (fact "works with just an attribute"
-    (map :db/id (all :test/name))
-    => [65 66])
-  (fact "and you can provide an attribute value of course"
-    (map :db/id (all [:test/name "Bartleby"]))
-    => [65])
-  (fact "returns empty seq if no results"
-    (all [:test/name "blarb"])
-    => empty?))
-
-(facts "ent-count returns a count"
-  (ent-count [:test/name])
-  => 2
-  (ent-count :test/name)
-  => 2
-  (ent-count [:test/name "blarb"])
-  => 0)
-
-(fact "t runs a transaction"
-  @(t [{:test/name "Henry" :test/number 123 :db/id (d/tempid :db.part/user)}])
-  (:test/name (one [:test/name "Henry"]))
-  => "Henry")
-
-(fact "retract retracts entities"
-  @(t [{:test/name "Henry" :test/number 123 :db/id (d/tempid :db.part/user)}])
-  (apply retract (map :db/id (all [:test/name "Henry"])))
-  (one [:test/name "Henry"])
-  => nil)
-
-(fact "you can specify the db with with-db-uri or :inputs"
-  (let [db (db)]
-    (with-db-uri "datomic:mem://datomic-junk-uncreated-db"
-      (d/delete-database *db-uri*)
-      (d/create-database *db-uri*)
-      (t schema)
-
-      (ent-count [:test/name])
-      => 0
-
-      (ent-count :test/name :inputs db)
-      => 2
-
-      (map :db/id (ents [[65] [66]] db))
-      => [65 66]
-
-      (with-db db
-        (ent-count [:test/name])
-        => 2))))
+["topic" "post" "tag"]
 ```
+
+and reads the corresponding `.edn` files under `resources/schemas`. It
+then runs the transactions in those files if they haven't been run
+already.
+
+`recreate` recreates a database.
+
+## Data Loading
+
+Functions in the `com.flyingmachine.datomic-junk.load` namespace allow
+you to more succinctly write entity and relationship data for loading
+into datomic. For example, say you have a simple forum schema with
+tags, topics, and posts, like this (truncated):
+
+```clojure
+[;; tag
+ {:db/ident :tag/name
+  :db/valueType :db.type/string}
+ 
+ ;; topic
+ {:db/ident :topic/title
+  :db/valueType :db.type/string}
+ {:db/ident :topic/tags
+  :db/valueType :db.type/ref
+  :db/cardinality :db.cardinality/many}
+
+ ;; post
+ {:db/ident :post/content
+  :db/valueType :db.type/string}
+ {:db/ident :post/topic
+  :db/valueType :db.type/ref}]
+```
+
+You could create entities using this data:
+
+```clojure
+[{:topic/title "Were-Simmons?"
+  :topic/tags [{:tag/name "health"}
+               {:tag/name "emergency"}]}
+               
+ [{:post/topic {:topic/title "Were-Simmons?"}}
+  {:post/content "I was bit by a were-Simmons. Is there any hope for me?"}
+  {:post/content "No, sorry. You will turn into Richard Simmons on the full moon."}]]
+```
+
+This would create one topic with two tags and two posts. The first
+element of the vector is a map, which tells datomic-junk to create an
+entity. Its `:topic/tags` attribute is a vector, and datomic-junk
+creates those entities and associates them with the topic.
+
+The second element is a vector. This tells datomic-junk to merge the
+first map of the vector (`{:post/topic {:topic/title
+"Were-Simmons?"}}`) with all of the maps that follow. It's as if you
+wrote this:
+
+```clojure
+[{:topic/title "Were-Simmons?"
+  :topic/tags [{:tag/name "health"}
+               {:tag/name "emergency"}]}
+ {:post/content "I was bit by a were-Simmons. Is there any hope for me?"
+  :post/topic {:topic/title "Were-Simmons?"}}
+ {:post/content "No, sorry. You will turn into Richard Simmons on the full moon."
+  :post/topic {:topic/title "Were-Simmons?"}}]
+```
+
+When the value of a map key is itself a map, like `{:post/topic
+{:topic/title "Were-Simmons?"}}`, then datomic-junk uses the inner map
+as a query. In this way, each of the posts is associated with the
+topic that gets created.

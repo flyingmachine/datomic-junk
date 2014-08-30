@@ -10,17 +10,22 @@
 
 (def recreate (partial t/recreate db-uri))
 (def conn (partial d/connect db-uri))
+(defn db [] (d/db (conn)))
+
+(defn inflate-attrs
+  [attrs]
+  (vec (map #(merge {:db/id (d/tempid :db.part/db)
+                     :db.install/_attribute :db.part/db
+                     :db/cardinality :db.cardinality/one}
+                    %)
+            attrs)))
 
 (def schema
-  (into []
-        (map #(merge {:db/id (d/tempid :db.part/db)
-                      :db.install/_attribute :db.part/db
-                      :db/cardinality :db.cardinality/one}
-                     %)
-             [{:db/ident :test/name
-               :db/valueType :db.type/string}
-              {:db/ident :test/number
-               :db/valueType :db.type/long}])))
+  (inflate-attrs
+   [{:db/ident :test/name
+     :db/valueType :db.type/string}
+    {:db/ident :test/number
+     :db/valueType :db.type/long}]))
 
 (def data [{:db/id #db/id[:db.part/db]
             :test/name "Bartleby"
