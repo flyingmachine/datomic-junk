@@ -1,4 +1,4 @@
-(defproject com.flyingmachine/datomic-junk "0.2.2"
+(defproject com.flyingmachine/datomic-junk "0.2.3"
   :description "FIXME: write description"
   :url "http://example.com/FIXME"
   :license {:name "Eclipse Public License"

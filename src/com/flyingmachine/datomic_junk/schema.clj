@@ -29,7 +29,7 @@
    installed in database."
   [conn schema-attr]
   (when-not (has-attribute? (d/db conn) schema-attr)
-    (d/transact conn [{:db/id (d/tempid [:db.part/db])
+    (d/transact conn [{:db/id (d/tempid :db.part/db)
                        :db/ident schema-attr
                        :db/valueType :db.type/keyword
                        :db/cardinality :db.cardinality/one
@@ -57,7 +57,7 @@
         (if txes
           (doseq [tx txes]
             ;; hrm, could mark the last tx specially
-            @(d/transact conn (cons {:db/id (d/tempid [:db.part/tx])
+            @(d/transact conn (cons {:db/id (d/tempid :db.part/tx)
                                      schema-attr schema-name}
                                     tx)))
           (throw (ex-info (str "No data provided for schema" schema-name)
